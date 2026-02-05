@@ -1,8 +1,0 @@
-name: Build Town Hitbox Mod
-
-# Disabled - build locally with: ./gradlew build
-# GitHub Actions CI issues with gradle/fabric-loom on runners
-# Use: ./gradlew build or ./gradlew.bat build locally
-
-on:
-  workflow_dispatch: # Manual trigger only
