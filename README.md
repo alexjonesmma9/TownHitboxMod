@@ -61,11 +61,31 @@ The mod creates a config file at `.minecraft/config/townhitboxmod.json`
 
 ## Building
 
+Build locally using Gradle (requires Java 17+):
+
+**Windows (PowerShell):**
 ```bash
-powershell -ExecutionPolicy Bypass -File build.ps1
+./gradlew.bat build
+```
+
+**Windows (CMD):**
+```cmd
+gradlew.bat build
+```
+
+**Linux/Mac:**
+```bash
+./gradlew build
 ```
 
 The compiled JAR will be in `build/libs/townhitboxmod-1.0.0.jar`
+
+### Troubleshooting Build Issues
+
+If the build fails with missing dependencies:
+- Ensure Java 17+ is installed: `java -version`
+- Clear gradle cache: delete `~/.gradle/caches` or run `./gradlew --stop`
+- Try: `./gradlew clean build`
 
 ## Compatibility
 
