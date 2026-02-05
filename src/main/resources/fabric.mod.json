@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "townhitboxmod",
+  "version": "${version}",
+  "name": "Town Hitbox Mod",
+  "description": "Color entity hitboxes red/green based on town names in nametags",
+  "authors": [
+    "You"
+  ],
+  "contact": {
+    "homepage": "",
+    "sources": ""
+  },
+  "license": "MIT",
+  "icon": "assets/townhitboxmod/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.townhitbox.TownHitboxMod"
+    ]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.14.0",
+    "minecraft": ">=1.20",
+    "java": ">=17"
+  }
+}
