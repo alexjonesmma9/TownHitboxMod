@@ -1,102 +1,106 @@
 package com.townhitbox.renderer;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.townhitbox.config.ConfigManager;
+import com.townhitbox.scanner.NametagScanner;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.entity.Entity;
+import net.minecraft.client.render.*;
+import net.minecraft.client.render.VertexFormat.DrawMode;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
-import com.townhitbox.scanner.NametaxScanner;
-import com.townhitbox.config.ConfigManager;
 import org.joml.Matrix4f;
 
+import java.util.OptionalDouble;
+
 public class HitboxRenderer {
-	private static final MinecraftClient client = MinecraftClient.getInstance();
+	private static final MinecraftClient CLIENT = MinecraftClient.getInstance();
 
-	public static void render(WorldRenderContext context) {
-		if (client.world == null || client.player == null) return;
-
-		// Get camera position for relative rendering
-		var camera = context.camera();
-		Vec3d cameraPos = camera.getPos();
-		double cameraX = cameraPos.x;
-		double cameraY = cameraPos.y;
-		double cameraZ = cameraPos.z;
-
-		var matrices = context.matrixStack();
-		var immediate = context.vertexConsumers();
-
-		// Iterate through all entities in world
-		for (Entity entity : client.world.getEntities()) {
-			if (entity == client.player || !(entity instanceof PlayerEntity)) continue;
-
-			PlayerEntity player = (PlayerEntity) entity;
-			NametaxScanner.TownType townType = NametaxScanner.getPlayerTownType(player);
-
-			// Determine color based on town type
-			float[] color = null;
-			if (townType == NametaxScanner.TownType.ENEMY) {
-				color = ConfigManager.redColor;
-			} else if (townType == NametaxScanner.TownType.FRIENDLY) {
-				color = ConfigManager.greenColor;
-			} else {
-				continue; // Skip unknown players
-			}
-
-			// Draw hitbox
-			Box box = player.getBoundingBox();
-			drawBox(
-				matrices,
-				immediate,
-				box.minX - cameraX,
-				box.minY - cameraY,
-				box.minZ - cameraZ,
-				box.maxX - cameraX,
-				box.maxY - cameraY,
-				box.maxZ - cameraZ,
-				color[0],
-				color[1],
-				color[2],
-				1.0f
-			);
+	// Custom RenderLayer via Anonymous Class to access protected members
+	private static class CustomRenderLayer extends RenderLayer {
+		public CustomRenderLayer(String name, VertexFormat format, DrawMode mode, int bufferSize, boolean hasCrumbling, boolean translucent, Runnable start, Runnable end) {
+			super(name, format, mode, bufferSize, hasCrumbling, translucent, start, end);
 		}
+
+		public static final RenderLayer LINES = RenderLayer.of(
+			"townhitbox_lines",
+			VertexFormats.LINES,
+			DrawMode.LINES,
+			256,
+			false,
+			false,
+			RenderLayer.MultiPhaseParameters.builder()
+				.program(LINES_PROGRAM)
+				.lineWidth(new RenderPhase.LineWidth(OptionalDouble.empty()))
+				.transparency(TRANSLUCENT_TRANSPARENCY)
+				.writeMaskState(ALL_MASK)
+				.cull(DISABLE_CULLING)
+				.build(false)
+		);
 	}
 
-	private static void drawBox(
-		net.minecraft.client.util.math.MatrixStack matrices,
-		net.minecraft.client.render.VertexConsumerProvider vertexConsumers,
-		double minX, double minY, double minZ,
-		double maxX, double maxY, double maxZ,
-		float r, float g, float b,
-		float alpha
-	) {
-		matrices.push();
+	public static void render(WorldRenderContext context) {
+		if (CLIENT.world == null || CLIENT.player == null) {
+			return;
+		}
 
-		VertexConsumer consumer = vertexConsumers.getBuffer(
-			net.minecraft.client.render.RenderLayer.getLineStrip(1.0f)
-		);
+		MatrixStack matrices = context.matrixStack();
+		VertexConsumerProvider consumers = context.consumers();
+		Vec3d cameraPos = context.camera().getPos();
 
-		var entry = matrices.peek();
-		Matrix4f matrix4f = entry.getPositionMatrix();
+		RenderSystem.lineWidth((float) ConfigManager.hitboxThickness);
+		
+		// Use custom layer to avoid conflicts
+		VertexConsumer consumer = consumers.getBuffer(CustomRenderLayer.LINES);
+		Matrix4f matrix = matrices.peek().getPositionMatrix();
 
-		// Draw box edges
-		drawLine(consumer, matrix4f, minX, minY, minZ, maxX, minY, minZ, r, g, b, alpha);
-		drawLine(consumer, matrix4f, maxX, minY, minZ, maxX, maxY, minZ, r, g, b, alpha);
-		drawLine(consumer, matrix4f, maxX, maxY, minZ, minX, maxY, minZ, r, g, b, alpha);
-		drawLine(consumer, matrix4f, minX, maxY, minZ, minX, minY, minZ, r, g, b, alpha);
+		for (PlayerEntity player : CLIENT.world.getPlayers()) {
+			if (player == CLIENT.player) {
+				continue;
+			}
+			
+			NametagScanner.TownType townType = NametagScanner.getPlayerTownType(player);
+			float[] color = null;
+			if (townType == NametagScanner.TownType.ENEMY) {
+				color = ConfigManager.redColor;
+			} else if (townType == NametagScanner.TownType.FRIENDLY) {
+				color = ConfigManager.greenColor;
+			}
 
-		drawLine(consumer, matrix4f, minX, minY, maxZ, maxX, minY, maxZ, r, g, b, alpha);
-		drawLine(consumer, matrix4f, maxX, minY, maxZ, maxX, maxY, maxZ, r, g, b, alpha);
-		drawLine(consumer, matrix4f, maxX, maxY, maxZ, minX, maxY, maxZ, r, g, b, alpha);
-		drawLine(consumer, matrix4f, minX, maxY, maxZ, minX, minY, maxZ, r, g, b, alpha);
+			if (color == null) {
+				continue;
+			}
 
-		drawLine(consumer, matrix4f, minX, minY, minZ, minX, minY, maxZ, r, g, b, alpha);
-		drawLine(consumer, matrix4f, maxX, minY, minZ, maxX, minY, maxZ, r, g, b, alpha);
-		drawLine(consumer, matrix4f, maxX, maxY, minZ, maxX, maxY, maxZ, r, g, b, alpha);
-		drawLine(consumer, matrix4f, minX, maxY, minZ, minX, maxY, maxZ, r, g, b, alpha);
+			// Offset the bounding box by the camera position for rendering
+			Box box = player.getBoundingBox().offset(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+			drawBox(consumer, matrix, box, color[0], color[1], color[2], 1.0f);
+		}
 
-		matrices.pop();
+		// Ensure we draw immediately if possible
+		if (consumers instanceof VertexConsumerProvider.Immediate immediate) {
+			immediate.draw();
+		}
+		
+		RenderSystem.lineWidth(1.0f);
+	}
+
+	private static void drawBox(VertexConsumer consumer, Matrix4f matrix, Box box, float r, float g, float b, float a) {
+		drawLine(consumer, matrix, box.minX, box.minY, box.minZ, box.maxX, box.minY, box.minZ, r, g, b, a);
+		drawLine(consumer, matrix, box.maxX, box.minY, box.minZ, box.maxX, box.maxY, box.minZ, r, g, b, a);
+		drawLine(consumer, matrix, box.maxX, box.maxY, box.minZ, box.minX, box.maxY, box.minZ, r, g, b, a);
+		drawLine(consumer, matrix, box.minX, box.maxY, box.minZ, box.minX, box.minY, box.minZ, r, g, b, a);
+
+		drawLine(consumer, matrix, box.minX, box.minY, box.maxZ, box.maxX, box.minY, box.maxZ, r, g, b, a);
+		drawLine(consumer, matrix, box.maxX, box.minY, box.maxZ, box.maxX, box.maxY, box.maxZ, r, g, b, a);
+		drawLine(consumer, matrix, box.maxX, box.maxY, box.maxZ, box.minX, box.maxY, box.maxZ, r, g, b, a);
+		drawLine(consumer, matrix, box.minX, box.maxY, box.maxZ, box.minX, box.minY, box.maxZ, r, g, b, a);
+
+		drawLine(consumer, matrix, box.minX, box.minY, box.minZ, box.minX, box.minY, box.maxZ, r, g, b, a);
+		drawLine(consumer, matrix, box.maxX, box.minY, box.minZ, box.maxX, box.minY, box.maxZ, r, g, b, a);
+		drawLine(consumer, matrix, box.maxX, box.maxY, box.minZ, box.maxX, box.maxY, box.maxZ, r, g, b, a);
+		drawLine(consumer, matrix, box.minX, box.maxY, box.minZ, box.minX, box.maxY, box.maxZ, r, g, b, a);
 	}
 
 	private static void drawLine(
@@ -104,10 +108,9 @@ public class HitboxRenderer {
 		Matrix4f matrix,
 		double x1, double y1, double z1,
 		double x2, double y2, double z2,
-		float r, float g, float b,
-		float alpha
+		float r, float g, float b, float a
 	) {
-		consumer.vertex(matrix, (float) x1, (float) y1, (float) z1).color(r, g, b, alpha).next();
-		consumer.vertex(matrix, (float) x2, (float) y2, (float) z2).color(r, g, b, alpha).next();
+		consumer.vertex(matrix, (float) x1, (float) y1, (float) z1).color(r, g, b, a).normal(0, 1, 0);
+		consumer.vertex(matrix, (float) x2, (float) y2, (float) z2).color(r, g, b, a).normal(0, 1, 0);
 	}
 }

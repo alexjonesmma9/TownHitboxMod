@@ -1,28 +1,35 @@
 {
-  "schemaVersion": 1,
-  "id": "townhitboxmod",
-  "version": "${version}",
-  "name": "Town Hitbox Mod",
-  "description": "Color entity hitboxes red/green based on town names in nametags",
-  "authors": [
-    "You"
-  ],
-  "contact": {
-    "homepage": "",
-    "sources": ""
-  },
-  "license": "MIT",
-  "icon": "assets/townhitboxmod/icon.png",
-  "environment": "client",
-  "entrypoints": {
-    "client": [
-      "com.townhitbox.TownHitboxMod"
-    ]
-  },
-  "mixins": [],
-  "depends": {
-    "fabricloader": ">=0.14.0",
-    "minecraft": ">=1.20",
-    "java": ">=17"
-  }
+	"schemaVersion": 1,
+	"id": "townhitboxmod",
+	"version": "${version}",
+	"name": "Town Hitbox Mod",
+	"description": "Highlight hitboxes of players from specific towns.",
+	"authors": [
+		"_Dvck"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/townhitboxmod/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"client": [
+			"com.townhitbox.TownHitboxMod"
+		],
+		"modmenu": [
+			"com.townhitbox.integration.ModMenuIntegration"
+		]
+	},
+	"mixins": [],
+	"depends": {
+		"fabricloader": ">=0.16.10",
+		"minecraft": ">=1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
 }
